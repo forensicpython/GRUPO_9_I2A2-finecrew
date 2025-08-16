@@ -1,0 +1,20 @@
+2025-08-16 17:22:37 | INFO | === INÍCIO DA EXECUÇÃO FINACREW ===
+2025-08-16 17:22:37 | INFO | LLM configurado com sucesso
+2025-08-16 17:22:37 | INFO | Pasta raw_data encontrada: /mnt/b3f9265b-b14c-43a0-adbb-51ada5f71808/Curso I2A2/FinaCrew/raw_data
+2025-08-16 17:22:37 | INFO | Criando instância do FinaCrew...
+2025-08-16 17:22:37 | INFO | Agente Consolidator criado: Especialista em Consolidação de Dados de RH
+2025-08-16 17:22:37 | INFO | Agente Validator criado: Especialista em Regras de Negócio e Compliance
+2025-08-16 17:22:37 | INFO | Agente Calculator criado: Especialista em Cálculos de VR/VA
+2025-08-16 17:22:37 | INFO | Agente Auditor criado: Auditor de Qualidade e Compliance
+2025-08-16 17:22:37 | INFO | Agente Consolidator criado: Especialista em Consolidação de Dados de RH
+2025-08-16 17:22:37 | INFO | Agente Validator criado: Especialista em Regras de Negócio e Compliance
+2025-08-16 17:22:37 | INFO | Agente Consolidator criado: Especialista em Consolidação de Dados de RH
+2025-08-16 17:22:37 | INFO | Agente Calculator criado: Especialista em Cálculos de VR/VA
+2025-08-16 17:22:37 | INFO | Agente Validator criado: Especialista em Regras de Negócio e Compliance
+2025-08-16 17:22:37 | INFO | Agente Consolidator criado: Especialista em Consolidação de Dados de RH
+2025-08-16 17:22:37 | INFO | Agente Auditor criado: Auditor de Qualidade e Compliance
+2025-08-16 17:22:37 | INFO | Agente Calculator criado: Especialista em Cálculos de VR/VA
+2025-08-16 17:22:37 | INFO | Agente Validator criado: Especialista em Regras de Negócio e Compliance
+2025-08-16 17:22:37 | INFO | Agente Consolidator criado: Especialista em Consolidação de Dados de RH
+2025-08-16 17:22:37 | INFO | === INICIANDO PROCESSAMENTO CREWAI ===
+2025-08-16 17:22:40 | ERROR | Erro durante execução: litellm.APIError: APIError: GroqException - litellm.Timeout: Connection timed out after None seconds.

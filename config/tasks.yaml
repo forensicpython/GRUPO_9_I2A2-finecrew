@@ -1,0 +1,102 @@
+consolidation_task:
+  name: Consolidação de Dados
+  description: |
+    Consolidar todos os arquivos Excel da pasta raw_data em uma base única.
+    
+    Passos:
+    1. Ler arquivo ATIVOS.xlsx como base principal
+    2. Enriquecer com dados de FÉRIAS.xlsx, DESLIGADOS.xlsx e ADMISSÃO ABRIL.xlsx
+    3. Adicionar informações de AFASTAMENTOS.xlsx
+    4. Incorporar dados de Base sindicato x valor.xlsx e Base dias uteis.xlsx
+    5. Validar integridade (matrículas duplicadas, campos obrigatórios)
+    6. Gerar relatório de consolidação com estatísticas
+    
+    IMPORTANTE: Manter log detalhado de todas as operações realizadas.
+  expected_output: |
+    DataFrame consolidado com todos os dados necessários para processamento,
+    incluindo relatório de consolidação com:
+    - Total de registros por arquivo
+    - Registros com problemas identificados
+    - Estatísticas gerais da base consolidada
+  output_file: output/consolidacao_relatorio.txt
+
+validation_task:
+  name: Validação e Exclusões
+  description: |
+    Aplicar todas as regras de validação e exclusão nos dados consolidados.
+    
+    Exclusões obrigatórias:
+    1. Diretores (identificar por cargo)
+    2. Estagiários (usar arquivo ESTÁGIO.xlsx)
+    3. Aprendizes (usar arquivo APRENDIZ.xlsx)
+    4. Profissionais no exterior (usar arquivo EXTERIOR.xlsx)
+    5. Afastados por licença
+    
+    Validações:
+    - Datas inconsistentes ou quebradas
+    - Campos obrigatórios faltantes
+    - Férias mal preenchidas
+    - Regra do dia 15 para desligamentos
+    
+    Gerar log detalhado de todas as exclusões com motivo.
+  expected_output: |
+    DataFrame validado apenas com colaboradores elegíveis e log detalhado contendo:
+    - Total de exclusões por motivo
+    - Lista de matrículas excluídas com justificativa
+    - Alertas sobre dados que precisam correção manual
+  context:
+    - consolidation_task
+  output_file: output/exclusoes_log.txt
+
+calculation_task:
+  name: Cálculo de Benefícios
+  description: |
+    Calcular o valor de VR para cada colaborador elegível.
+    
+    Cálculos necessários:
+    1. Identificar sindicato de cada colaborador
+    2. Calcular dias úteis no mês considerando:
+       - Dias úteis do sindicato
+       - Períodos de férias
+       - Data de admissão (proporcional)
+       - Data de desligamento (proporcional)
+    3. Aplicar valor de VR por dia do sindicato
+    4. Calcular valor total: dias úteis × valor por dia
+    5. Calcular divisão: 80% empresa, 20% colaborador
+    
+    Gerar planilha no formato exato para a operadora.
+  expected_output: |
+    Planilha Excel formatada com:
+    - Matrícula, Nome, CPF
+    - Dias úteis calculados
+    - Valor total de VR
+    - Valor empresa (80%)
+    - Valor colaborador (20%)
+    Formato deve seguir modelo em VR MENSAL 05.2025.xlsx
+  context:
+    - validation_task
+  output_file: output/vr_calculado.xlsx
+
+audit_task:
+  name: Auditoria Final
+  description: |
+    Realizar auditoria completa do processamento.
+    
+    Validações finais:
+    1. Totalização dos valores
+    2. Comparação com mês anterior (se disponível)
+    3. Identificação de anomalias (valores muito altos/baixos)
+    4. Validação de formatos e campos obrigatórios
+    5. Conferência das validações da aba "validações" do modelo
+    
+    Gerar relatório executivo e aprovar/reprovar o processamento.
+  expected_output: |
+    Relatório de auditoria contendo:
+    - Status: APROVADO ou REPROVADO
+    - Resumo executivo com totalizações
+    - Lista de possíveis problemas encontrados
+    - Comparativo com período anterior (se aplicável)
+    - Recomendações de ajustes (se necessário)
+  context:
+    - calculation_task
+  output_file: output/auditoria_final.html

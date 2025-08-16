@@ -1,0 +1,4 @@
+2025-08-16 17:21:13 | INFO | Iniciando teste do sistema de logging
+2025-08-16 17:21:13 | ERROR | Simulando erro de API
+2025-08-16 17:21:13 | WARNING | Rate limiting ativado - pausa de 1s
+2025-08-16 17:21:13 | INFO | Teste de logging concluído com sucesso

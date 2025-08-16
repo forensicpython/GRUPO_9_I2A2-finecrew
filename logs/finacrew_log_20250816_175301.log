@@ -1,0 +1,2 @@
+2025-08-16 17:53:01 | INFO | === INÍCIO FINACREW HÍBRIDO ===
+2025-08-16 17:53:23 | ERROR | Erro: batch_calculate_vr_tool() missing 1 required positional argument: 'output_file'

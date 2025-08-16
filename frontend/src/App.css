@@ -1,0 +1,184 @@
+/* Reset e configurações globais */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Importar fonte Inter do Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Classes utilitárias */
+.text-gradient {
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Melhorias para os componentes MUI */
+.MuiButton-root {
+  transition: all 0.3s ease !important;
+}
+
+.MuiCard-root {
+  transition: all 0.3s ease !important;
+}
+
+.MuiPaper-root {
+  transition: all 0.3s ease !important;
+}
+
+/* Animação de loading */
+.rotate {
+  animation: spin 1s linear infinite;
+}
+
+/* Sombras personalizadas */
+.shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Hover effects */
+.hover-scale:hover {
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Melhorias para o Stepper */
+.MuiStepLabel-label {
+  font-weight: 500 !important;
+  color: #64748b !important;
+}
+
+.MuiStepLabel-label.Mui-active {
+  color: #1e40af !important;
+  font-weight: 600 !important;
+}
+
+.MuiStepLabel-label.Mui-completed {
+  color: #3b82f6 !important;
+  font-weight: 600 !important;
+}
+
+/* Melhorias para os inputs */
+.MuiOutlinedInput-root {
+  background-color: #f8fafc;
+  transition: all 0.3s ease !important;
+}
+
+.MuiOutlinedInput-root:hover {
+  background-color: white;
+}
+
+.MuiOutlinedInput-root.Mui-focused {
+  background-color: white;
+}
+
+/* Progress bar customizada */
+.MuiLinearProgress-root {
+  height: 8px !important;
+  border-radius: 4px !important;
+  background-color: #e2e8f0 !important;
+}
+
+.MuiLinearProgress-bar {
+  background: linear-gradient(90deg, #3b82f6 0%, #1e40af 100%) !important;
+  border-radius: 4px !important;
+}
+
+/* Alerts personalizados */
+.MuiAlert-root {
+  border-radius: 12px !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.MuiAlert-standardSuccess {
+  background-color: #f0fdf4 !important;
+  color: #166534 !important;
+}
+
+.MuiAlert-standardWarning {
+  background-color: #fffbeb !important;
+  color: #92400e !important;
+}
+
+.MuiAlert-standardError {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+}
+
+.MuiAlert-standardInfo {
+  background-color: #eff6ff !important;
+  color: #1e40af !important;
+}
+
+/* Chips personalizados */
+.MuiChip-root {
+  font-weight: 500 !important;
+}
+
+/* Lista de arquivos */
+.MuiListItem-root {
+  border-radius: 8px !important;
+  margin-bottom: 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+.MuiListItem-root:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Tooltips */
+.MuiTooltip-tooltip {
+  background-color: #1e293b !important;
+  color: white !important;
+  font-size: 0.875rem !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .MuiContainer-root {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  
+  .MuiTypography-h3 {
+    font-size: 1.75rem !important;
+  }
+  
+  .MuiTypography-h4 {
+    font-size: 1.5rem !important;
+  }
+  
+  .MuiTypography-h5 {
+    font-size: 1.25rem !important;
+  }
+}
