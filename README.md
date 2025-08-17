@@ -23,14 +23,14 @@ python finacrew.py
 - Usa Groq API diretamente (mais estável)
 - Processa todos os arquivos Excel
 - Calcula VR com IA + ferramentas Python
-- Resultado: 1772 funcionários, R$ 994.092,00
+
 
 ## 🔧 Configuração (.env)
 
 ```bash
 # API Groq (Obrigatório)
 GROQ_API_KEY=gsk-sua-chave-aqui
-MODEL=llama3-8b-8192
+MODEL=-seu-modelo-preferido
 
 # Caminhos
 RAW_DATA_PATH=../raw_data
