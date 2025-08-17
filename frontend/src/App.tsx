@@ -276,7 +276,7 @@ function App() {
           }}
         >
           <Typography variant="body2" color="text.secondary">
-            FinaCrew © 2025 - Sistema profissional de processamento automatizado
+            FinaCrew © 2025 - Automação que alimenta a sua gestão.
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.7 }}>
             Desenvolvido com React, Material-UI e Inteligência Artificial
