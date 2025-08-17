@@ -41,6 +41,11 @@ def generate_model_compliant_excel_tool(output_filename: str = "VR MENSAL 05.202
         print("🏢 Carregando sindicatos reais dos funcionários...")
         mapeamento_sindicatos = load_real_syndicates(raw_data_path)
         
+        # CRÍTICO: Enriquecer dados com datas de admissão reais
+        print("🔧 Enriquecendo dados com datas de admissão...")
+        calculos_df['DATA_ADMISSAO_REAL'] = calculos_df['MATRICULA'].astype(str).apply(mapeamento_admissao)
+        print(f"✅ {len(calculos_df)} funcionários enriquecidos com datas de admissão")
+        
         # Criar workbook
         wb = openpyxl.Workbook()
         wb.remove(wb.active)  # Remove aba padrão
@@ -100,8 +105,8 @@ def create_vr_mensal_sheet_model_compliant(ws, data_df, mapeamento_admissao, map
         # Colunas conforme modelo exato:
         matricula = str(funcionario.get('MATRICULA', ''))
         
-        # Data de admissão REAL (buscar no mapeamento)
-        admissao = mapeamento_admissao(matricula)  # Função retorna data real ou padrão
+        # Data de admissão REAL (usar coluna enriquecida)
+        admissao = funcionario.get('DATA_ADMISSAO_REAL', mapeamento_admissao(matricula))
         
         # Sindicato do colaborador REAL (buscar no mapeamento)
         sindicato_nome = mapeamento_sindicatos(matricula)  # Função retorna sindicato real
@@ -144,6 +149,9 @@ def create_vr_mensal_sheet_model_compliant(ws, data_df, mapeamento_admissao, map
         ws.cell(row=current_row, column=7).number_format = '#,##0'     # Total
         ws.cell(row=current_row, column=8).number_format = '#,##0'     # Custo empresa
         ws.cell(row=current_row, column=9).number_format = '#,##0'     # Desconto
+        
+        # CRÍTICO: Formatação da data de admissão
+        ws.cell(row=current_row, column=2).number_format = 'DD/MM/YYYY'
         
         current_row += 1
     
