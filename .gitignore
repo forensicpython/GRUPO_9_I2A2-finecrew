@@ -1,38 +1,65 @@
-  # Dependencies
-  node_modules/
-  venv/
-  env/
+# Dependencies
+node_modules/
+venv/
+env/
+__pycache__/
 
-  # Build outputs  
-  frontend/build/
-  dist/
+# Build outputs  
+frontend/build/
+dist/
+build/
 
-  # Environment files
-  .env
-  .env.local
-  .env.production.local
-
-  # Cache
-  .cache/
-  __pycache__/
-  *.pyc
-
-  # Logs
-  *.log
-  logs/
-
-  # Temporary files
-  temp_uploads/
-  temp_data/
-  uploads/
-
-  # OS files
-  .DS_Store
-  Thumbs.db
-
-  # IDE
-  .vscode/
-  .idea/
-  EOF
-EOf
+# Environment files
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Cache and temporary files
+.cache/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Logs and output files
+*.log
+logs/
+output/
+model_thoughts_*.log
+finacrew_log_*.log
+
+# Temporary uploads and data
+temp_uploads/
+temp_data/
+uploads/
+api/temp_uploads/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Package files
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Raw data files (Excel uploads)
+raw_data/*.xlsx
+raw_data/*.xls
