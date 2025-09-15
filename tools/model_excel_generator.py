@@ -70,9 +70,10 @@ def generate_model_compliant_excel_tool(output_filename: str = "VR MENSAL 05.202
 def create_vr_mensal_sheet_model_compliant(ws, data_df, mapeamento_admissao, mapeamento_sindicatos, reference_month="05.2025"):
     """Cria aba VR MENSAL seguindo EXATAMENTE o modelo"""
     
-    # CABEÇALHO EXATO CONFORME MODELO
+    # CABEÇALHO ATUALIZADO - INCLUINDO CARGO APÓS MATRÍCULA
     headers = [
         "Matricula",
+        "Cargo",
         "Admissão", 
         "Sindicato do Colaborador",
         "Competência",
@@ -105,6 +106,9 @@ def create_vr_mensal_sheet_model_compliant(ws, data_df, mapeamento_admissao, map
         # Colunas conforme modelo exato:
         matricula = str(funcionario.get('MATRICULA', ''))
         
+        # Cargo do funcionário (título do cargo)
+        cargo = str(funcionario.get('TITULO DO CARGO', funcionario.get('CARGO', 'N/A')))
+        
         # Data de admissão REAL (usar coluna enriquecida)
         admissao = funcionario.get('DATA_ADMISSAO_REAL', mapeamento_admissao(matricula))
         
@@ -132,31 +136,32 @@ def create_vr_mensal_sheet_model_compliant(ws, data_df, mapeamento_admissao, map
         # OBS GERAL (vazio por padrão)
         obs_geral = ""
         
-        # Inserir dados nas colunas
+        # Inserir dados nas colunas (ajustado para incluir coluna Cargo)
         ws.cell(row=current_row, column=1, value=matricula)
-        ws.cell(row=current_row, column=2, value=admissao)
-        ws.cell(row=current_row, column=3, value=sindicato_nome)
-        ws.cell(row=current_row, column=4, value=competencia_mes)
-        ws.cell(row=current_row, column=5, value=dias)
-        ws.cell(row=current_row, column=6, value=valor_diario)
-        ws.cell(row=current_row, column=7, value=total_vr)
-        ws.cell(row=current_row, column=8, value=custo_empresa)
-        ws.cell(row=current_row, column=9, value=desconto_profissional)
-        ws.cell(row=current_row, column=10, value=obs_geral)
+        ws.cell(row=current_row, column=2, value=cargo)
+        ws.cell(row=current_row, column=3, value=admissao)
+        ws.cell(row=current_row, column=4, value=sindicato_nome)
+        ws.cell(row=current_row, column=5, value=competencia_mes)
+        ws.cell(row=current_row, column=6, value=dias)
+        ws.cell(row=current_row, column=7, value=valor_diario)
+        ws.cell(row=current_row, column=8, value=total_vr)
+        ws.cell(row=current_row, column=9, value=custo_empresa)
+        ws.cell(row=current_row, column=10, value=desconto_profissional)
+        ws.cell(row=current_row, column=11, value=obs_geral)
         
-        # Formatação de números
-        ws.cell(row=current_row, column=6).number_format = '#,##0.00'  # Valor diário
-        ws.cell(row=current_row, column=7).number_format = '#,##0'     # Total
-        ws.cell(row=current_row, column=8).number_format = '#,##0'     # Custo empresa
-        ws.cell(row=current_row, column=9).number_format = '#,##0'     # Desconto
+        # Formatação de números (ajustado para nova posição das colunas)
+        ws.cell(row=current_row, column=7).number_format = '#,##0.00'  # Valor diário
+        ws.cell(row=current_row, column=8).number_format = '#,##0'     # Total
+        ws.cell(row=current_row, column=9).number_format = '#,##0'     # Custo empresa
+        ws.cell(row=current_row, column=10).number_format = '#,##0'    # Desconto
         
-        # CRÍTICO: Formatação da data de admissão
-        ws.cell(row=current_row, column=2).number_format = 'DD/MM/YYYY'
+        # CRÍTICO: Formatação da data de admissão (agora na coluna 3)
+        ws.cell(row=current_row, column=3).number_format = 'DD/MM/YYYY'
         
         current_row += 1
     
-    # Ajustar larguras das colunas conforme modelo
-    column_widths = [12, 12, 50, 12, 8, 15, 12, 15, 18, 15]
+    # Ajustar larguras das colunas conforme modelo (com coluna Cargo adicionada)
+    column_widths = [12, 25, 12, 50, 12, 8, 15, 12, 15, 18, 15]  # Cargo: 25 width
     for i, width in enumerate(column_widths, 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
 
@@ -226,13 +231,39 @@ def get_sindicato_full_name(sindicato_original):
     
     return sindicatos_completos.get(str(sindicato_original), estados_sindicatos.get(str(sindicato_original), str(sindicato_original)))
 
+def find_file_variations(directory, base_name):
+    """Procura variações do nome do arquivo para lidar com acentos e espaços"""
+    import os
+    from pathlib import Path
+    
+    # Lista todas as variações possíveis
+    variations = [
+        base_name,
+        base_name.replace(' ', '_'),
+        base_name.replace('Ã', 'A'),
+        base_name.replace('É', 'E'),
+        base_name.replace('FÉRIAS', 'FERIAS'),
+        base_name.replace('ADMISSÃO', 'ADMISSAO'),
+        base_name.replace(' ABRIL', '_ABRIL')
+    ]
+    
+    # Verifica se alguma variação existe
+    for variation in variations:
+        file_path = directory / f"{variation}.xlsx"
+        if file_path.exists():
+            return file_path
+    
+    # Se não encontrar, retorna o nome original (vai dar erro e será capturado)
+    return directory / f"{base_name}.xlsx"
+
 def load_real_admission_dates(raw_data_path):
     """Carrega datas de admissão reais dos arquivos"""
     mapeamento_admissao = {}
     
     try:
-        # Carregar admissões de abril
-        admissao_df = pd.read_excel(raw_data_path / "ADMISSÃO ABRIL.xlsx")
+        # Carregar admissões de abril (com tratamento de variações no nome)
+        admissao_path = find_file_variations(raw_data_path, "ADMISSÃO ABRIL")
+        admissao_df = pd.read_excel(admissao_path)
         print(f"📅 Carregadas {len(admissao_df)} admissões de abril")
         
         for _, row in admissao_df.iterrows():

@@ -5,6 +5,45 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import re
 
+def find_file_variations(directory, base_name):
+    """Procura variações do nome do arquivo para lidar com acentos e espaços"""
+    import os
+    from pathlib import Path
+    
+    # Lista todas as variações possíveis
+    variations = [
+        base_name,
+        base_name.replace(' ', '_'),
+        base_name.replace('Ã', 'A'),
+        base_name.replace('É', 'E'),
+        base_name.replace('FÉRIAS', 'FERIAS'),
+        base_name.replace('ADMISSÃO', 'ADMISSAO'),
+        base_name.replace(' ABRIL', '_ABRIL'),
+        # Variações específicas conhecidas
+        'FERIAS' if 'FÉRIAS' in base_name else base_name,
+        'ADMISSAO_ABRIL' if 'ADMISSÃO ABRIL' in base_name else base_name,
+        'Base_sindicato_x_valor' if 'Base sindicato x valor' in base_name else base_name,
+        'Base_dias_uteis' if 'Base dias uteis' in base_name else base_name,
+        'ESTAGIO' if 'ESTÁGIO' in base_name else base_name,
+        # Remover duplicatas
+    ]
+    # Remover duplicatas mantendo ordem
+    variations = list(dict.fromkeys(variations))
+    
+    # Verifica se alguma variação existe
+    for variation in variations:
+        file_path = directory / f"{variation}.xlsx"
+        if file_path.exists():
+            print(f"📁 Arquivo encontrado: {file_path}")
+            return file_path
+    
+    # Se não encontrar, listar arquivos disponíveis para debug
+    available_files = list(directory.glob("*.xlsx"))
+    print(f"❌ Arquivo '{base_name}.xlsx' não encontrado. Disponíveis: {[f.name for f in available_files]}")
+    
+    # Se não encontrar, retorna o nome original (vai dar erro e será capturado)
+    return directory / f"{base_name}.xlsx"
+
 @tool("consolidate_databases_tool")
 def consolidate_databases_tool() -> str:
     """
@@ -27,24 +66,28 @@ def consolidate_databases_tool() -> str:
         ativos_df = pd.read_excel(raw_data_path / "ATIVOS.xlsx")
         print(f"   ✅ ATIVOS: {len(ativos_df)} registros")
         
-        # Base de Férias
-        ferias_df = pd.read_excel(raw_data_path / "FÉRIAS.xlsx")
+        # Base de Férias (com tratamento de variações no nome)
+        ferias_path = find_file_variations(raw_data_path, "FÉRIAS")
+        ferias_df = pd.read_excel(ferias_path)
         print(f"   ✅ FÉRIAS: {len(ferias_df)} registros")
         
         # Base de Desligados
         desligados_df = pd.read_excel(raw_data_path / "DESLIGADOS.xlsx")
         print(f"   ✅ DESLIGADOS: {len(desligados_df)} registros")
         
-        # Base de Admissões
-        admissoes_df = pd.read_excel(raw_data_path / "ADMISSÃO ABRIL.xlsx")
+        # Base de Admissões (com tratamento de variações no nome)
+        admissoes_path = find_file_variations(raw_data_path, "ADMISSÃO ABRIL")
+        admissoes_df = pd.read_excel(admissoes_path)
         print(f"   ✅ ADMISSÕES: {len(admissoes_df)} registros")
         
-        # Base Sindicato x Valor
-        sindicato_valor_df = pd.read_excel(raw_data_path / "Base sindicato x valor.xlsx")
+        # Base Sindicato x Valor (com tratamento de variações no nome)
+        sindicato_path = find_file_variations(raw_data_path, "Base sindicato x valor")
+        sindicato_valor_df = pd.read_excel(sindicato_path)
         print(f"   ✅ SINDICATO VALORES: {len(sindicato_valor_df)} registros")
         
-        # Base Dias Úteis
-        dias_uteis_df = pd.read_excel(raw_data_path / "Base dias uteis.xlsx")
+        # Base Dias Úteis (com tratamento de variações no nome)
+        dias_uteis_path = find_file_variations(raw_data_path, "Base dias uteis")
+        dias_uteis_df = pd.read_excel(dias_uteis_path)
         print(f"   ✅ DIAS ÚTEIS: {len(dias_uteis_df)} registros")
         
         # 2. CARREGAR BASES DE EXCLUSÃO

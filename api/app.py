@@ -8,16 +8,26 @@ import sys
 import tempfile
 import shutil
 import json
+import logging
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import subprocess
 
+# Configurar logging para reduzir verbose
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
+logging.getLogger('werkzeug').disabled = True
+
 # Configurar o path para importar o FinaCrew
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# Importar analisador de planilhas
+from tools.spreadsheet_analyzer import SpreadsheetAnalyzer
+from tools.accounting_report_generator import AccountingReportGenerator
+
 from src.finacrew import FinaCrewWorking
+from src.finacrew_enhanced import FinaCrewEnhanced
 
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='/')
 CORS(app)  # Permitir requisições do React
@@ -104,6 +114,30 @@ def test_groq_config():
     except Exception as e:
         return jsonify({'error': f'Erro no teste de configuração: {str(e)}'}), 500
 
+@app.route('/api/analyze-files', methods=['POST'])
+def analyze_uploaded_files():
+    """Analisar arquivos carregados para identificar tipos de planilha"""
+    try:
+        # Verificar se há arquivos para analisar
+        uploaded_files = os.listdir(UPLOAD_FOLDER) if os.path.exists(UPLOAD_FOLDER) else []
+        
+        if not uploaded_files:
+            return jsonify({'error': 'Nenhum arquivo carregado para análise'}), 400
+        
+        # Analisar arquivos
+        analyzer = SpreadsheetAnalyzer()
+        file_paths = [os.path.join(UPLOAD_FOLDER, filename) for filename in uploaded_files]
+        
+        analysis_result = analyzer.analyze_multiple_files(file_paths)
+        
+        return jsonify({
+            'message': 'Análise concluída com sucesso',
+            'analysis': analysis_result
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro na análise: {str(e)}'}), 500
+
 @app.route('/api/upload', methods=['POST'])
 def upload_files():
     """Upload dos arquivos Excel"""
@@ -119,6 +153,7 @@ def upload_files():
         
         files = request.files.getlist('files')
         uploaded_files = []
+        analysis_results = []
         
         # Limpar uploads anteriores
         for file in os.listdir(UPLOAD_FOLDER):
@@ -126,21 +161,51 @@ def upload_files():
             if os.path.isfile(file_path):
                 os.unlink(file_path)
         
+        # Inicializar analisador
+        analyzer = SpreadsheetAnalyzer()
+        
         for file in files:
             if file and file.filename and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(file_path)
                 
-                uploaded_files.append({
+                # Analisar automaticamente a planilha
+                analysis = analyzer.analyze_spreadsheet(file_path)
+                
+                file_info = {
                     'name': filename,
                     'size': os.path.getsize(file_path),
-                    'path': file_path
-                })
+                    'path': file_path,
+                    'analysis': {
+                        'is_employee_list': analysis['is_employee_list'],
+                        'sheet_type': analysis['sheet_type'],
+                        'confidence': analysis['confidence'],
+                        'detected_fields': list(analysis.get('detected_fields', {}).keys()),
+                        'recommendations': analysis.get('recommendations', [])
+                    }
+                }
+                
+                uploaded_files.append(file_info)
+                analysis_results.append(analysis)
+        
+        # Gerar resumo da análise
+        employee_lists = sum(1 for a in analysis_results if a['is_employee_list'])
+        sheet_types = {}
+        for analysis in analysis_results:
+            if analysis['is_employee_list']:
+                sheet_type = analysis['sheet_type']
+                sheet_types[sheet_type] = sheet_types.get(sheet_type, 0) + 1
         
         return jsonify({
-            'message': f'{len(uploaded_files)} arquivos carregados com sucesso',
-            'files': uploaded_files
+            'message': f'{len(uploaded_files)} arquivos carregados e analisados com sucesso',
+            'files': uploaded_files,
+            'analysis_summary': {
+                'total_files': len(uploaded_files),
+                'employee_lists': employee_lists,
+                'identified_types': sheet_types,
+                'ready_for_processing': employee_lists >= 5
+            }
         })
         
     except Exception as e:
@@ -158,13 +223,41 @@ def process_files():
         
         # Verificar se há arquivos para processar
         uploaded_files = os.listdir(UPLOAD_FOLDER)
+        
+        # Arquivos obrigatórios
+        required_files = [
+            'ATIVOS.xlsx', 'FERIAS.xlsx', 'DESLIGADOS.xlsx', 
+            'ADMISSAO_ABRIL.xlsx', 'Base_sindicato_x_valor.xlsx'
+        ]
+        
+        # Se não temos arquivos suficientes, completar com os do raw_data
+        project_root = Path(os.path.dirname(__file__)).parent
+        raw_data_original = project_root / "raw_data"
+        
+        if len(uploaded_files) < 10 and raw_data_original.exists():
+            print(f"⚠️ Apenas {len(uploaded_files)} arquivos carregados. Completando com raw_data...")
+            
+            # Mapear arquivos do raw_data
+            for raw_file in raw_data_original.glob("*.xlsx"):
+                # Normalizar nome do arquivo
+                normalized_name = raw_file.name.replace('É', 'E').replace('Ã', 'A').replace(' ', '_')
+                upload_path = Path(UPLOAD_FOLDER) / normalized_name
+                
+                # Copiar se não existe no upload
+                if not upload_path.exists():
+                    shutil.copy2(raw_file, upload_path)
+                    print(f"   📋 Copiado: {raw_file.name} -> {normalized_name}")
+            
+            # Atualizar lista de arquivos
+            uploaded_files = os.listdir(UPLOAD_FOLDER)
+            print(f"✅ Total de arquivos disponíveis: {len(uploaded_files)}")
+        
         if len(uploaded_files) < 5:
             return jsonify({
-                'error': 'Mínimo 5 arquivos necessários para processamento'
+                'error': f'Mínimo 5 arquivos necessários para processamento. Disponíveis: {len(uploaded_files)}'
             }), 400
         
         # Criar diretório temporário para os arquivos raw_data
-        project_root = Path(os.path.dirname(__file__)).parent
         raw_data_temp = project_root / "raw_data_temp"
         raw_data_temp.mkdir(exist_ok=True)
         
@@ -188,9 +281,9 @@ def process_files():
         raw_data_temp.rename(raw_data_original)
         
         try:
-            # Executar FinaCrew
-            finacrew = FinaCrewWorking()
-            success = finacrew.run_complete_process()
+            # Executar FinaCrew Aprimorado
+            finacrew = FinaCrewEnhanced()
+            success = finacrew.run_enhanced_complete_process()
             
             if success:
                 # Verificar arquivos gerados
@@ -199,8 +292,20 @@ def process_files():
                 
                 if output_dir.exists():
                     for arquivo in output_dir.iterdir():
-                        if arquivo.is_file() and arquivo.suffix == '.xlsx':
+                        if arquivo.is_file() and arquivo.suffix in ['.xlsx', '.txt']:
                             arquivos_gerados.append(arquivo.name)
+                
+                # Gerar relatório contábil em TXT
+                try:
+                    report_generator = AccountingReportGenerator()
+                    report_path = report_generator.generate_report()
+                    
+                    if report_path:
+                        report_filename = os.path.basename(report_path)
+                        arquivos_gerados.append(report_filename)
+                        print(f"📊 Relatório contábil gerado: {report_filename}")
+                except Exception as e:
+                    print(f"⚠️  Erro ao gerar relatório contábil: {e}")
                 
                 # Simular estatísticas (em produção, extrair dos arquivos gerados)
                 resultado = {
@@ -260,7 +365,7 @@ def list_generated_files():
         
         files = []
         for arquivo in output_dir.iterdir():
-            if arquivo.is_file() and arquivo.suffix == '.xlsx':
+            if arquivo.is_file() and arquivo.suffix in ['.xlsx', '.txt']:
                 files.append({
                     'name': arquivo.name,
                     'size': arquivo.stat().st_size,
@@ -283,7 +388,7 @@ def get_status():
         
         # Verificar arquivos gerados
         output_dir = project_root / "output"
-        generated_count = len([f for f in output_dir.iterdir() if f.is_file() and f.suffix == '.xlsx']) if output_dir.exists() else 0
+        generated_count = len([f for f in output_dir.iterdir() if f.is_file() and f.suffix in ['.xlsx', '.txt']]) if output_dir.exists() else 0
         
         return jsonify({
             'uploaded_files': uploaded_count,
@@ -325,7 +430,8 @@ if __name__ == '__main__':
     print("📋 Endpoints disponíveis:")
     print("   GET  /api/health - Status da API")
     print("   POST /api/test-groq-config - Testar configuração Groq")
-    print("   POST /api/upload - Upload de arquivos")
+    print("   POST /api/upload - Upload de arquivos (com análise automática)")
+    print("   POST /api/analyze-files - Analisar arquivos carregados")
     print("   POST /api/process - Processar arquivos")
     print("   GET  /api/download/<filename> - Download de arquivo")
     print("   GET  /api/files - Listar arquivos gerados")
