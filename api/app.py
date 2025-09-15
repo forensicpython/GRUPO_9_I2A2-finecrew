@@ -337,20 +337,54 @@ def process_files():
 def download_file(filename):
     """Download dos arquivos gerados"""
     try:
+        # Validar nome do arquivo por segurança
+        if not filename or '..' in filename or '/' in filename:
+            return jsonify({'error': 'Nome de arquivo inválido'}), 400
+        
         project_root = Path(os.path.dirname(__file__)).parent
         output_dir = project_root / "output"
         file_path = output_dir / filename
         
-        if not file_path.exists():
-            return jsonify({'error': 'Arquivo não encontrado'}), 404
+        # Log para debug
+        print(f"📁 Tentando download: {file_path}")
+        print(f"📁 Arquivo existe: {file_path.exists()}")
         
-        return send_file(
+        if not file_path.exists():
+            # Listar arquivos disponíveis para debug
+            available_files = []
+            if output_dir.exists():
+                available_files = [f.name for f in output_dir.iterdir() if f.is_file()]
+            print(f"📁 Arquivos disponíveis: {available_files}")
+            
+            return jsonify({
+                'error': 'Arquivo não encontrado',
+                'requested': filename,
+                'available': available_files
+            }), 404
+        
+        # Verificar se é arquivo seguro para download
+        if not file_path.suffix.lower() in ['.xlsx', '.xls', '.txt', '.csv']:
+            return jsonify({'error': 'Tipo de arquivo não permitido'}), 403
+        
+        # Headers para forçar download
+        response = send_file(
             str(file_path),
             as_attachment=True,
-            download_name=filename
+            download_name=filename,
+            mimetype='application/octet-stream'
         )
         
+        # Headers adicionais para compatibilidade
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        print(f"✅ Download iniciado: {filename}")
+        return response
+        
     except Exception as e:
+        print(f"❌ Erro no download: {str(e)}")
         return jsonify({'error': f'Erro no download: {str(e)}'}), 500
 
 @app.route('/api/files', methods=['GET'])

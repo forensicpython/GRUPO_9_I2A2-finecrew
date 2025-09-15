@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -11,6 +11,9 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  CircularProgress,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Refresh as ResetIcon,
@@ -34,6 +37,12 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
   results,
   onReset,
 }) => {
+  const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({ open: false, message: '', severity: 'info' });
   if (!results) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -59,13 +68,85 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
     }).format(value);
   };
 
-  const handleDownload = (filename: string) => {
-    const link = document.createElement('a');
-    link.href = `/api/download/${encodeURIComponent(filename)}`;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const showNotification = (message: string, severity: 'success' | 'error' | 'info') => {
+    setNotification({ open: true, message, severity });
+  };
+
+  const handleDownload = async (filename: string) => {
+    // Evitar downloads duplicados
+    if (downloadingFiles.has(filename)) {
+      showNotification('Download já em andamento para este arquivo', 'info');
+      return;
+    }
+
+    try {
+      console.log(`🔄 Iniciando download: ${filename}`);
+      
+      // Marcar como baixando
+      setDownloadingFiles(prev => new Set(prev).add(filename));
+      
+      // Verificar se o arquivo existe primeiro
+      const checkResponse = await fetch(`/api/files`);
+      if (!checkResponse.ok) {
+        throw new Error('Erro ao verificar arquivos disponíveis');
+      }
+      
+      const { files } = await checkResponse.json();
+      const fileExists = files.some((file: any) => file.name === filename);
+      
+      if (!fileExists) {
+        const availableFiles = files.map((f: any) => f.name).join(', ');
+        throw new Error(`Arquivo "${filename}" não encontrado. Disponíveis: ${availableFiles}`);
+      }
+      
+      // Fazer o download
+      const downloadUrl = `/api/download/${encodeURIComponent(filename)}`;
+      
+      // Método mais robusto usando fetch
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+      }
+      
+      // Obter o blob do arquivo
+      const blob = await response.blob();
+      
+      // Verificar se o blob não está vazio
+      if (blob.size === 0) {
+        throw new Error('Arquivo vazio recebido do servidor');
+      }
+      
+      // Criar link de download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      
+      // Adicionar ao DOM, clicar e remover
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Limpar URL temporária
+      window.URL.revokeObjectURL(url);
+      
+      console.log(`✅ Download concluído: ${filename}`);
+      showNotification(`Download de "${filename}" concluído com sucesso!`, 'success');
+      
+    } catch (error) {
+      console.error(`❌ Erro no download de "${filename}":`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      showNotification(`Erro ao baixar "${filename}": ${errorMessage}`, 'error');
+    } finally {
+      // Remover da lista de downloads em andamento
+      setDownloadingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(filename);
+        return newSet;
+      });
+    }
   };
 
   return (
@@ -202,11 +283,15 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
                       <Button
                         size="small"
                         variant="outlined"
-                        startIcon={<DownloadIcon />}
+                        startIcon={downloadingFiles.has(filename) ? 
+                          <CircularProgress size={16} /> : 
+                          <DownloadIcon />
+                        }
                         onClick={() => handleDownload(filename)}
                         color={isReport ? "success" : "primary"}
+                        disabled={downloadingFiles.has(filename)}
                       >
-                        Baixar
+                        {downloadingFiles.has(filename) ? 'Baixando...' : 'Baixar'}
                       </Button>
                     }
                   >
@@ -250,6 +335,22 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
           Processar Novos Arquivos
         </Button>
       </Box>
+
+      {/* Notificações */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
