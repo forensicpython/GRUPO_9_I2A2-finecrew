@@ -18,13 +18,35 @@ PORT=5001 python3 api/app.py
 cd frontend && npm start
 ```
 
+## 🔧 Configuração (.env)
+
+```bash
+# API Groq (Obrigatório)
+GROQ_API_KEY=gsk-sua-chave-aqui
+MODEL=llama-3.3-70b-versatile
+
+# Caminhos
+RAW_DATA_PATH=../raw_data
+OUTPUT_PATH=../output
+
+# Performance
+API_DELAY_SECONDS=2
+API_REQUEST_TIMEOUT=60
+API_MAX_RETRIES=3
+
+# Logging
+ENABLE_MODEL_LOGGING=true
+LOG_LEVEL=info
+```
+
 ## 📱 COMO USAR
 
-1. **Acesse:** http://localhost:3000
-2. **Faça upload** dos arquivos Excel obrigatórios
-3. **Clique "Processar"**
-4. **Aguarde** o sistema multi-agente processar
-5. **Baixe** os resultados
+1. **Configure** sua chave API Groq no arquivo .env
+2. **Acesse:** http://localhost:3000
+3. **Faça upload** dos arquivos Excel obrigatórios
+4. **Clique "Processar"**
+5. **Aguarde** o sistema multi-agente processar
+6. **Baixe** os resultados
 
 ## 📋 ARQUIVOS OBRIGATÓRIOS
 
