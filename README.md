@@ -6,7 +6,7 @@ Sistema automatizado para cálculo de Vale Refeição com **arquitetura multi-ag
 
 ### **Opção 1: Automático (Recomendado)**
 ```bash
-./start_dev.sh
+./start_finecrew.sh
 ```
 
 ### **Opção 2: Manual**
