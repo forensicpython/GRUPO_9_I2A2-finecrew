@@ -1,1 +1,0 @@
-# FinaCrew - Sistema de Automação de VR/VA

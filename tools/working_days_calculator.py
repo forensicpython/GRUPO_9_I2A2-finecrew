@@ -226,7 +226,7 @@ def apply_working_days_to_employees_tool() -> str:
         
         # Estatísticas
         stats = ativos_df.groupby('Sindicato')['DIAS_UTEIS_REGIAO'].agg(['count', 'first']).reset_index()
-        stats.columns = ['Sindicato', 'Funcionarios', 'Dias_Uteis']
+        stats.columns = ['Sindicato', 'Dados de funcionários processados', 'Dias_Uteis']
         
         # Salvar resultado
         resultado_path = output_path / "funcionarios_com_dias_uteis_regiao.xlsx"
@@ -239,7 +239,7 @@ def apply_working_days_to_employees_tool() -> str:
 """
         
         for _, row in stats.iterrows():
-            relatorio += f"🏢 {row['Sindicato']}: {row['Funcionarios']} funcionários, {row['Dias_Uteis']} dias úteis\n"
+            relatorio += f"🏢 {row['Sindicato']}: {row['Dados de funcionários processados']} funcionários, {row['Dias_Uteis']} dias úteis\n"
         
         relatorio += f"""
 📄 ARQUIVOS GERADOS:

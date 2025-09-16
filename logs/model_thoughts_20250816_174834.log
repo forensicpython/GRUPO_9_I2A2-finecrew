@@ -1,3 +1,0 @@
-17:48:36 | [Consolidator] I need to start by listing all the Excel files in the raw_data folder, then I'll read each file using the excel_reader_tool, and finally, I'll consolidate the data and generate the report.
-17:48:37 | [Consolidator] I need to start by listing all the Excel files in the raw_data folder, then read each file using the excel_reader_tool, and finally consolidate the data and generate a report.
-17:48:38 | [Consolidator] I need to start by listing all the Excel files in the raw_data folder, then read each file, extract the necessary data, and consolidate it into a single DataFrame.

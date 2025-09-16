@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 @tool("generate_model_compliant_excel_tool")
-def generate_model_compliant_excel_tool(output_filename: str = "VR MENSAL 05.2025 vfinal.xlsx", reference_month: str = "05.2025") -> str:
+def generate_model_compliant_excel_tool(output_filename: str = "VR MENSAL 05.2025.xlsx", reference_month: str = "05.2025") -> str:
     """
     Gera planilha Excel EXATAMENTE conforme modelo "VR MENSAL 05.2025.xlsx":
     - Aba "VR MENSAL 05.2025" com formato idêntico

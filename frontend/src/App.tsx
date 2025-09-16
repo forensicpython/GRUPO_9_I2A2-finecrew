@@ -45,7 +45,7 @@ function App() {
 
   const handleFilesUploaded = (files: File[]) => {
     updateState({ uploadedFiles: files });
-    nextStep();
+    // Não avançar automaticamente - deixar usuário decidir quando ir para processamento
   };
 
   const handleProcessingComplete = (results: ProcessingResults) => {
@@ -182,10 +182,13 @@ function App() {
 
             <Button
               onClick={nextStep}
-              disabled={state.currentStep === steps.length - 1}
+              disabled={
+                state.currentStep === steps.length - 1 ||
+                (state.currentStep === 1 && state.uploadedFiles.length === 0)
+              }
               variant="contained"
             >
-              Próximo
+              {state.currentStep === steps.length - 1 ? 'Finalizar' : 'Próximo'}
             </Button>
           </Box>
         </Container>

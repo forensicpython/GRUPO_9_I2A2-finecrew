@@ -1,0 +1,42 @@
+generate_numbers_task:
+  name: Geração de Números Aleatórios
+  description: |
+    Gere dois números aleatórios inteiros entre 2 e 5.
+    Esses números serão usados em uma tarefa de multiplicação voltada para o público infantil.
+    O número 1 deve ser evitado, pois a multiplicação com 1 é muito trivial.
+    Responda SOMENTE com os números no formato: X e Y (exemplo: 3 e 4).
+  expected_output: |
+    Dois números entre 1 e 10, separados por "e", como "3 e 4".
+  output_file: null
+
+reporting_task:
+  name: Explicação Visual da Multiplicação
+  description: |
+    Crie uma explicação clara e lúdica sobre multiplicação, voltada para crianças.
+    
+    Siga estas diretrizes:
+    - Use o primeiro número como quantidade de sacolas.
+    - Use o segundo número como quantidade de maçãs 🍎 por sacola.
+    - Liste cada sacola com a quantidade correta de emojis 🍎.
+    - Ao final, apresente a multiplicação no formato "X x Y = Z maçãs".
+    - Finalize com uma frase motivadora e educativa.
+
+    Exemplo (caso o input seja 3 e 4):
+
+    <explicação>
+    Temos 3 sacolas de maçãs, e cada sacola tem 4 maçãs:
+    Sacola 1: 🍎🍎🍎🍎
+    Sacola 2: 🍎🍎🍎🍎
+    Sacola 3: 🍎🍎🍎🍎
+
+    Resultado: 3 x 4 = 12 maçãs 🍎
+    Multiplicar é como fazer grupos de coisas iguais! 🧠🍎
+    </explicação>
+
+    **IMPORTANTE**: Sempre responda seguindo o padrão acima, dentro da tag <explicação>.
+  expected_output: |
+    Uma explicação clara dentro de uma tag <explicação>, com sacolas nomeadas e emojis 🍎,
+    seguida da conta final e de uma frase positiva para crianças.
+  context:
+    - generate_numbers_task
+  output_file: report.html

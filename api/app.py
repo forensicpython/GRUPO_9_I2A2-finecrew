@@ -26,15 +26,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from tools.spreadsheet_analyzer import SpreadsheetAnalyzer
 from tools.accounting_report_generator import AccountingReportGenerator
 
-from src.finacrew import FinaCrewWorking
-from src.finacrew_enhanced import FinaCrewEnhanced
+from agents.coordinator_agent import process_vr_real
 
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='/')
 CORS(app)  # Permitir requisições do React
 
 # Configurações
 UPLOAD_FOLDER = 'temp_uploads'
-ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
+ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'csv'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB máximo
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -45,6 +44,51 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_real_statistics(output_dir, arquivos_gerados):
+    """Extrair estatísticas reais dos arquivos gerados pelo FinaCrew"""
+    import pandas as pd
+
+    # Procurar pelo arquivo de cálculos automatizados
+    calc_file = output_dir / "calculo_automatizado_beneficios.xlsx"
+
+    if not calc_file.exists():
+        raise FileNotFoundError(f"Arquivo de cálculos não encontrado: {calc_file}")
+
+    # Ler estatísticas detalhadas
+    try:
+        estatisticas_df = pd.read_excel(calc_file, sheet_name='Estatísticas Detalhadas')
+
+        # Converter DataFrame em dicionário para facilitar acesso
+        stats_dict = {}
+        for _, row in estatisticas_df.iterrows():
+            metric = row['Métrica']
+            value = row['Valor']
+            stats_dict[metric] = value
+
+        # Extrair valores numéricos das strings formatadas
+        def extract_numeric_value(value_str):
+            if isinstance(value_str, str) and 'R$' in value_str:
+                # Remove 'R$', espaços, pontos e vírgulas, converte para float
+                return float(value_str.replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.'))
+            return value_str
+
+        funcionarios_elegiveis = int(stats_dict.get('Total Funcionários Calculados', 0))
+        valor_total_vr = extract_numeric_value(stats_dict.get('Total Valor VR', 'R$ 0,00'))
+        valor_empresa = extract_numeric_value(stats_dict.get('Total Valor Empresa (80%)', 'R$ 0,00'))
+        valor_funcionario = extract_numeric_value(stats_dict.get('Total Valor Funcionário (20%)', 'R$ 0,00'))
+
+        return {
+            'status': 'success',
+            'funcionarios_elegiveis': funcionarios_elegiveis,
+            'valor_total_vr': valor_total_vr,
+            'valor_empresa': valor_empresa,
+            'valor_funcionario': valor_funcionario,
+            'tempo_processamento': '45s'
+        }
+
+    except Exception as e:
+        raise Exception(f"Erro ao processar estatísticas: {str(e)}")
 
 def get_groq_config_from_headers():
     """Extrair configuração Groq dos headers da requisição"""
@@ -60,10 +104,30 @@ def update_env_with_groq_config(groq_config):
     """Atualizar variáveis de ambiente com configuração Groq"""
     if groq_config:
         os.environ['GROQ_API_KEY'] = groq_config.get('apiKey', '')
-        os.environ['MODEL'] = groq_config.get('model', 'llama3-8b-8192')
+        os.environ['MODEL'] = groq_config.get('model', 'llama-3.3-70b-versatile')
         os.environ['REQUEST_DELAY'] = str(groq_config.get('requestDelay', 2))
         os.environ['REQUEST_TIMEOUT'] = str(groq_config.get('requestTimeout', 60))
         os.environ['MAX_RETRIES'] = str(groq_config.get('maxRetries', 3))
+
+def load_env_config():
+    """Carregar configuração do arquivo .env"""
+    from pathlib import Path
+    import re
+    
+    env_file = Path(__file__).parent.parent / '.env'
+    if env_file.exists():
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
+        print(f"🔧 Configuração carregada do .env: {env_file}")
+    else:
+        print(f"⚠️  Arquivo .env não encontrado: {env_file}")
+
+# Carregar configuração do .env ao inicializar
+load_env_config()
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -74,19 +138,51 @@ def health_check():
         'version': '2.0'
     })
 
-@app.route('/api/test-groq-config', methods=['POST'])
+@app.route('/api/default-config', methods=['GET'])
+def get_default_config():
+    """Obter configuração padrão do .env"""
+    try:
+        default_config = {
+            'hasDefaultConfig': bool(os.environ.get('GROQ_API_KEY')),
+            'apiKey': os.environ.get('GROQ_API_KEY', '')[:10] + '...' if os.environ.get('GROQ_API_KEY') else '',
+            'model': os.environ.get('MODEL', 'llama-3.3-70b-versatile'),
+            'configSource': '.env file'
+        }
+        
+        return jsonify(default_config)
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao obter configuração padrão: {str(e)}'}), 500
+
+@app.route('/api/test-groq-config', methods=['POST', 'OPTIONS'])
 def test_groq_config():
     """Testar configuração da API Groq"""
+    # Tratar requisições OPTIONS para CORS
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
     try:
+        print("📡 Recebida requisição de teste Groq")
         config = request.get_json()
+        print(f"📋 Configuração recebida: {config}")
         
         if not config or not config.get('apiKey'):
+            print("❌ Configuração ou chave API não fornecida")
             return jsonify({'error': 'Configuração ou chave API não fornecida'}), 400
         
         # Testar conexão com Groq
-        from groq import Groq
+        try:
+            from groq import Groq
+        except ImportError:
+            print("❌ Biblioteca Groq não instalada")
+            return jsonify({'error': 'Biblioteca Groq não está instalada. Execute: pip install groq'}), 500
         
         try:
+            print(f"🔄 Testando conexão com modelo: {config.get('model', 'llama3-8b-8192')}")
             client = Groq(api_key=config['apiKey'])
             
             # Fazer uma chamada de teste simples
@@ -99,6 +195,8 @@ def test_groq_config():
                 temperature=0.1
             )
             
+            print(f"✅ Conexão bem-sucedida! Resposta: {response.choices[0].message.content.strip()}")
+            
             return jsonify({
                 'status': 'success',
                 'message': 'Conexão com Groq estabelecida com sucesso!',
@@ -107,11 +205,13 @@ def test_groq_config():
             })
             
         except Exception as groq_error:
+            print(f"❌ Erro na conexão com Groq: {str(groq_error)}")
             return jsonify({
                 'error': f'Erro na conexão com Groq: {str(groq_error)}'
             }), 400
             
     except Exception as e:
+        print(f"❌ Erro geral no teste: {str(e)}")
         return jsonify({'error': f'Erro no teste de configuração: {str(e)}'}), 500
 
 @app.route('/api/analyze-files', methods=['POST'])
@@ -281,42 +381,52 @@ def process_files():
         raw_data_temp.rename(raw_data_original)
         
         try:
-            # Executar FinaCrew Aprimorado
-            finacrew = FinaCrewEnhanced()
-            success = finacrew.run_enhanced_complete_process()
-            
-            if success:
-                # Verificar arquivos gerados
+            print("🚀 EXECUTANDO SISTEMA MULTI-AGENTE...")
+
+            # Executar Sistema Multi-Agente
+            multiagent_result = process_vr_real(month="05", year="2025")
+
+            if multiagent_result['status'] == 'success':
+                # Preparar resposta com dados REAIS do sistema multi-agente
                 output_dir = project_root / "output"
                 arquivos_gerados = []
-                
+
                 if output_dir.exists():
                     for arquivo in output_dir.iterdir():
                         if arquivo.is_file() and arquivo.suffix in ['.xlsx', '.txt']:
                             arquivos_gerados.append(arquivo.name)
-                
+
                 # Gerar relatório contábil em TXT
                 try:
                     report_generator = AccountingReportGenerator()
                     report_path = report_generator.generate_report()
-                    
+
                     if report_path:
                         report_filename = os.path.basename(report_path)
                         arquivos_gerados.append(report_filename)
                         print(f"📊 Relatório contábil gerado: {report_filename}")
                 except Exception as e:
                     print(f"⚠️  Erro ao gerar relatório contábil: {e}")
-                
-                # Simular estatísticas (em produção, extrair dos arquivos gerados)
+
+                # Usar resultados REAIS do sistema multi-agente
                 resultado = {
-                    'status': 'success',
-                    'funcionarios_elegiveis': 1791,
-                    'valor_total_vr': 1004751.00,
-                    'valor_empresa': 803800.80,
-                    'valor_funcionario': 200950.20,
-                    'arquivos_gerados': arquivos_gerados,
-                    'tempo_processamento': '45s'
+                    'funcionarios_elegiveis': multiagent_result['total_employees'],
+                    'valor_total_vr': multiagent_result['total_vr_value'],
+                    'valor_empresa': multiagent_result['company_cost'],
+                    'valor_funcionario': multiagent_result['employee_cost'],
+                    'metodo_calculo': multiagent_result['calculation_method'],
+                    'arquivos_gerados': arquivos_gerados
                 }
+
+                print(f"✅ SISTEMA MULTI-AGENTE: {resultado['funcionarios_elegiveis']} funcionários, "
+                      f"VR Total: R$ {resultado['valor_total_vr']:,.2f}")
+
+                # Adicionar dados extras ao resultado
+                resultado.update({
+                    'status': 'success',
+                    'tempo_processamento': 'Sistema Multi-Agente',
+                    'sistema_usado': 'Multi-Agente com cálculos reais'
+                })
                 
                 return jsonify(resultado)
             else:

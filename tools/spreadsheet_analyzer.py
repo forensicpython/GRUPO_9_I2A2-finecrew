@@ -154,9 +154,30 @@ class SpreadsheetAnalyzer:
         """Analisar uma planilha e determinar se contém dados de funcionários"""
         try:
             logger.info(f"🔍 Analisando planilha: {file_path}")
-            
-            # Ler a planilha
-            df = pd.read_excel(file_path)
+
+            # Detectar tipo de arquivo e ler adequadamente
+            file_path_obj = Path(file_path)
+            file_extension = file_path_obj.suffix.lower()
+
+            if file_extension == '.csv':
+                # Ler arquivo CSV
+                df = pd.read_csv(file_path, encoding='utf-8', sep=',')
+                if df.empty:
+                    # Tentar com separador de ponto e vírgula
+                    df = pd.read_csv(file_path, encoding='utf-8', sep=';')
+                if df.empty:
+                    # Tentar com encoding latin-1
+                    df = pd.read_csv(file_path, encoding='latin-1', sep=',')
+            elif file_extension in ['.xlsx', '.xls']:
+                # Ler arquivo Excel
+                df = pd.read_excel(file_path)
+            else:
+                return {
+                    'is_employee_list': False,
+                    'confidence': 0,
+                    'sheet_type': 'ERROR',
+                    'error': f'Formato de arquivo não suportado: {file_extension}'
+                }
             
             if df.empty:
                 return {

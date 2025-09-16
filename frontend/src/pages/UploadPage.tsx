@@ -33,21 +33,29 @@ const UploadPage: React.FC<UploadPageProps> = ({
 
   const validateFile = (file: File): boolean => {
     const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      'text/csv',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv', // .csv
+      'application/csv', // .csv (alternativo)
     ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      setError('Apenas arquivos Excel (.xlsx, .xls) e CSV são permitidos');
+
+    // Verificar também pela extensão do arquivo (fallback)
+    const allowedExtensions = ['xlsx', 'xls', 'csv'];
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+    const isValidType = allowedTypes.includes(file.type);
+    const isValidExtension = fileExtension && allowedExtensions.includes(fileExtension);
+
+    if (!isValidType && !isValidExtension) {
+      setError(`Apenas arquivos Excel (.xlsx, .xls) e CSV são permitidos. Arquivo: ${file.name} (tipo: ${file.type})`);
       return false;
     }
-    
-    if (file.size > 10 * 1024 * 1024) { // 10MB
-      setError('Arquivo muito grande. Máximo: 10MB');
+
+    if (file.size > 16 * 1024 * 1024) { // 16MB (igual ao backend)
+      setError('Arquivo muito grande. Máximo: 16MB');
       return false;
     }
-    
+
     return true;
   };
 
@@ -58,22 +66,66 @@ const UploadPage: React.FC<UploadPageProps> = ({
     });
 
     try {
+      console.log('📤 Enviando arquivos para upload...', filesToUpload.map(f => f.name));
+
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('📡 Resposta recebida:', response.status, response.statusText);
+
+      // Verificar se a resposta é JSON válido
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro no upload');
+        let errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`;
+
+        if (isJson) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (jsonError) {
+            console.warn('Erro ao parsear JSON de erro:', jsonError);
+          }
+        } else {
+          // Se não for JSON, tentar ler como texto
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          } catch (textError) {
+            console.warn('Erro ao ler resposta como texto:', textError);
+          }
+        }
+
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
-      console.log('Upload realizado com sucesso:', result);
-      return true;
+      // Parse da resposta de sucesso
+      if (isJson) {
+        const result = await response.json();
+        console.log('✅ Upload realizado com sucesso:', result);
+        return result;
+      } else {
+        console.log('✅ Upload realizado com sucesso (resposta não-JSON)');
+        return { success: true };
+      }
+
     } catch (error) {
-      console.error('Erro no upload:', error);
-      setError(error instanceof Error ? error.message : 'Erro no upload');
+      console.error('❌ Erro no upload:', error);
+
+      let errorMessage = 'Erro desconhecido no upload';
+
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMessage = 'Erro de conexão: Verifique se o backend está rodando na porta 5001';
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      setError(errorMessage);
       return false;
     }
   };
@@ -154,7 +206,7 @@ const UploadPage: React.FC<UploadPageProps> = ({
             Arraste arquivos aqui ou clique para selecionar
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Formatos aceitos: .xlsx, .xls, .csv (máx. 10MB)
+            Formatos aceitos: .xlsx, .xls, .csv (máx. 16MB)
           </Typography>
           <input
             type="file"

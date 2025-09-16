@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -43,6 +43,27 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
     message: string;
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
+
+  // Automatic download on results load
+  useEffect(() => {
+    if (results && results.arquivos_gerados && results.arquivos_gerados.length > 0) {
+      // Find the main VR file (should be VR MENSAL 05.2025.xlsx)
+      const mainVRFile = results.arquivos_gerados.find(file =>
+        file.toLowerCase().includes('vr mensal') && file.toLowerCase().includes('.xlsx')
+      );
+
+      if (mainVRFile) {
+        // Auto-download after 2 seconds to allow UI to render
+        const timer = setTimeout(() => {
+          console.log('🔄 Iniciando download automático:', mainVRFile);
+          handleDownload(mainVRFile);
+        }, 2000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [results]);
+
   if (!results) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -233,7 +254,7 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
                   <PeopleIcon color="primary" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Funcionários Processados"
+                  primary="Dados de funcionários processados"
                   secondary={`${results.funcionarios_elegiveis} funcionários elegíveis para VR/VA`}
                 />
               </ListItem>
