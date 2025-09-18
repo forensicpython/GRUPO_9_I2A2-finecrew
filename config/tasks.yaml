@@ -1,0 +1,145 @@
+consolidate_base_task:
+  name: Consolidação da Base de Dados
+  description: |
+    Consolidar todas as 5 fontes de dados obrigatórias em uma base única.
+
+    Fontes obrigatórias:
+    - temp_uploads/ATIVOS.xlsx (funcionários ativos + sindicatos)
+    - temp_uploads/DESLIGADOS.xlsx (funcionários desligados)
+    - temp_uploads/FERIAS.xlsx (funcionários em férias)
+    - temp_uploads/ADMISSAO_ABRIL.xlsx (novas admissões)
+    - temp_uploads/Base_sindicato_x_valor.xlsx (valores por sindicato)
+
+    Processos:
+    1. PRIMEIRO: Use a ferramenta file_discovery_tool para descobrir todos os arquivos disponíveis em temp_uploads/
+    2. SEGUNDO: Mapear os arquivos encontrados para suas categorias corretas usando os caminhos fornecidos pelo file_discovery_tool
+    3. TERCEIRO: Usar a ferramenta spreadsheet_analyzer_tool para validar a estrutura de cada arquivo encontrado
+    4. Mapear arquivos encontrados para suas categorias:
+       - ATIVOS.xlsx → funcionários ativos principais
+       - DESLIGADOS.xlsx → funcionários desligados
+       - FERIAS.xlsx → funcionários em férias
+       - ADMISSAO_ABRIL.xlsx → novas admissões
+       - Base_sindicato_x_valor.xlsx → tabela de valores por sindicato
+    4. Carregar e validar estrutura de cada arquivo
+    5. Realizar merge inteligente baseado em MATRICULA
+    6. Criar base consolidada única para processamento
+
+    **CRÍTICO**:
+    - NUNCA use dados simulados ou inventados
+    - SEMPRE use temp_uploads/ como diretório base
+    - Use apenas dados reais extraídos dos arquivos Excel fornecidos
+  expected_output: |
+    Base consolidada contendo todos os funcionários com dados enriched:
+    - Informações básicas (MATRICULA, Nome, Sindicato)
+    - Dados de admissão quando disponíveis
+    - Dados de desligamento quando aplicáveis
+    - Dados de férias quando existentes
+    - Valores por sindicato mapeados
+
+apply_exclusions_task:
+  name: Aplicação de Filtros de Exclusão
+  description: |
+    Aplicar todas as regras de exclusão conforme especificações do projeto
+    usando o ExclusionsAgent especializado.
+
+    Critérios de exclusão:
+    - Diretores e cargos de liderança
+    - Estagiários e aprendizes
+    - Funcionários em licença médica
+    - Funcionários trabalhando no exterior
+    - Outros critérios específicos do projeto
+
+    Este processo deve ser rigorosamente documentado para auditoria.
+  expected_output: |
+    Lista de funcionários elegíveis após aplicação de todos os filtros,
+    incluindo estatísticas de exclusões:
+    - Total de funcionários antes da filtragem
+    - Total de funcionários após filtragem
+    - Breakdown por tipo de exclusão aplicada
+    - Lista detalhada dos funcionários excluídos para auditoria
+  context:
+    - consolidate_base_task
+
+calculate_working_days_task:
+  name: Cálculo de Dias Úteis por Região
+  description: |
+    Calcular dias úteis específicos para cada sindicato/região considerando:
+
+    Fatores que afetam dias úteis:
+    - Feriados nacionais
+    - Feriados estaduais específicos
+    - Feriados municipais
+    - Calendário específico de cada sindicato
+    - Período de férias dos funcionários
+    - Regras de desligamento (comunicado até dia 15)
+
+    O cálculo deve ser baseado no mês de referência (05.2025) e considerar
+    a localização geográfica de cada sindicato.
+  expected_output: |
+    Mapeamento completo de dias úteis por funcionário:
+    - Dias úteis base por sindicato/região
+    - Ajustes por férias individuais
+    - Ajustes por regras de desligamento
+    - Dias úteis finais para cálculo do VR
+  context:
+    - apply_exclusions_task
+
+calculate_vr_values_task:
+  name: Cálculo de Valores VR
+  description: |
+    Calcular valores finais de VR baseado em dados reais extraídos das planilhas.
+
+    **OBRIGATÓRIO**: PRIMEIRO use a ferramenta real_data_processor_tool para
+    processar os dados reais das planilhas. Esta ferramenta retorna os números
+    corretos que devem ser usados.
+
+    Fórmula de cálculo:
+    VR_TOTAL = (Valor_Diario_Sindicato × Dias_Uteis_Funcionario)
+
+    Rateio obrigatório:
+    - 80% Empresa
+    - 20% Funcionário
+
+    Considerações especiais:
+    - Valores diferentes por sindicato/estado
+    - Proporcionalidade para admissões/desligamentos
+    - Regra do dia 15 para comunicados de desligamento
+
+    **CRÍTICO**:
+    - NUNCA invente números
+    - SEMPRE use real_data_processor_tool primeiro
+    - Use apenas os valores retornados por esta ferramenta
+  expected_output: |
+    Planilha com cálculos detalhados contendo:
+    - MATRICULA, Nome, Sindicato
+    - Valor diário do sindicato
+    - Dias úteis calculados
+    - Valor VR total
+    - Rateio empresa/funcionário
+    - Observações sobre ajustes aplicados
+  context:
+    - calculate_working_days_task
+
+generate_final_reports_task:
+  name: Geração de Relatórios Finais
+  description: |
+    Gerar a planilha final e relatórios conforme especificações do projeto.
+
+    Arquivos a serem gerados:
+    1. "VR MENSAL 05.2025.xlsx" - Planilha principal
+    2. Relatório de estatísticas e validações
+    3. Log de exclusões para auditoria
+
+    A planilha final deve seguir exatamente o modelo especificado e conter
+    todas as validações necessárias para aprovação.
+
+    **IMPORTANTE**: O nome do arquivo deve ser exatamente "VR MENSAL 05.2025.xlsx"
+  expected_output: |
+    Conjunto completo de arquivos:
+    - Planilha VR MENSAL 05.2025.xlsx formatada conforme padrão
+    - Relatório de estatísticas com totalizações
+    - Documento de validações e conferências
+    - Log detalhado de processamento para auditoria
+  context:
+    - calculate_vr_values_task
+  output_file: "VR MENSAL 05.2025.xlsx"
