@@ -46,5 +46,3 @@ Apenas o essencial para os objetivos:
 - Groq (LLM provider)
 - Pandas/OpenPyXL (processamento de planilhas)
 - Flask (API mínima)
-
-Todos os arquivos desnecessários foram removidos para manter foco nos objetivos do PDF.
